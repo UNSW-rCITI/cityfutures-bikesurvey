@@ -49,7 +49,7 @@ Now we use R to connect to the database and extract the data we need.
 #| message: FALSE
 #| warning: FALSE
 # install these required packages if you don't have them with :
-# `install.packages(c("mongolite", "jsonlite", "dplyr", "data.table", "magrittr"))`
+# `install.packages(c("mongolite", "jsonlite", "dplyr", "data.table", "magrittr", "lubridate"))`
 library(data.table)
 library(magrittr)
 library(mongolite)
