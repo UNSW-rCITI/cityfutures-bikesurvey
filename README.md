@@ -21,17 +21,19 @@ Fourstep.
 
 To run this document you need:
 
-- Quarto 1.2 or newer.
+- Quarto 1.2 or newer,
+- R 4.0 or newer, and
 - [Docker](https://www.docker.com/products/docker-desktop/) or MongoDB
   4.4.0 (tested).
 
 # Data extraction
 
-Fourstep uses NOSQL database to store its data and user data uploaded
-from their mobile phone devices. First you need to restore the database
-from the backup file to a running instance of MongoDB. If you have
-Docker installed, you can run the following command to start a MongoDB
-instance:
+Fourstep uses [MongoDB](https://www.mongodb.com/), a
+[NoSQL](https://en.wikipedia.org/wiki/NoSQL) database, to store its data
+and user data uploaded from their mobile phone devices. First you need
+to restore the database from the backup file to a running instance of
+MongoDB. If you have Docker installed, you can run the following command
+to start a MongoDB instance:
 
 ``` bash
 docker run -d -p 27017:27017 --name test-mongodb mongo:4.4.0
@@ -45,10 +47,24 @@ docker cp '<path/to/fourstep-mongdb-backup.tar.gz>' test-mongodb:/dump.tar.gz
 docker exec test-mongodb sh -c 'mongorestore --drop --gzip --archive=dump.tar.gz'
 ```
 
-The following R code can be used to extract the data from the database
-and save it to CSV files.
+Now we use R to connect to the database and extract the data we need.
 
 ``` r
+# install these required packages if you don't have them with :
+# `install.packages(c("mongolite", "jsonlite", "dplyr", "data.table", "magrittr"))`
+library(data.table)
+library(magrittr)
+library(mongolite)
+library(jsonlite)
+library(dplyr)
+library(lubridate)
+```
+
+The code chunk below shows how to connect to the running instance of our
+MongoDB database.
+
+``` r
+# Names of the collections in the database
 COLLECTIONS <-
   c(
     "Stage_Profiles",
@@ -61,6 +77,7 @@ COLLECTIONS <-
     "Stage_uuids"
   )
 
+# helper function to create a connection to the database
 create_connection <- function(db, collection, url) {
   stopifnot(collection %in% COLLECTIONS)
   mongolite::mongo(db = db,
@@ -68,6 +85,7 @@ create_connection <- function(db, collection, url) {
                    url = url)
 }
 
+# helper function to create connections to the database
 connect_stage_collections <-
   function(db = "Stage_database",
            collections = COLLECTIONS,
@@ -83,37 +101,28 @@ connect_stage_collections <-
     cons
   }
 
+# create connections to the database
 conn <- connect_stage_collections()
-```
 
-``` r
-normalise_uuid <- function(.data, keep_uuid = FALSE) {
-  if (nrow(.data) == 0) {
-    return(.data)
-  }
-  # return(.data)
-  if (!is.data.table(.data)) {
-    setDT(.data)
-  }
-  if ("uuid" %in% names(.data)) {
-    .data[, user_id := sapply(uuid, function(.x) paste0(unlist(.x), collapse = ""))]
-    if (!keep_uuid) {
-      .data[, uuid := NULL]
-    }
-  } else {
-    .data[, user_id := sapply(user_id, function(.x) paste0(unlist(.x), collapse = ""))]
-  }
-  .data
+# helper function to convert UUID to string
+mutate_uuid_to_string <- function(.data, uuid_col) {
+  .data %>%
+    dplyr::rowwise() %>%
+    dplyr::mutate({{uuid_col}} := paste0(unlist({{uuid_col}}), collapse = "")) %>%
+    dplyr::ungroup()
 }
 ```
 
+The following R code can be used to extract the data from the database
+and save them to CSV files.
+
 ``` r
 uuids <- conn$Stage_uuids$find() %>%
-  normalise_uuid() %>%
+  mutate_uuid_to_string(uuid) %>%
   jsonlite::flatten()
 
 profiles <- conn$Stage_Profiles$find() %>%
-  normalise_uuid() %>%
+  mutate_uuid_to_string(user_id) %>%
   jsonlite::flatten() 
 
 confirmed_trips <- conn$Stage_analysis_timeseries$find(query = '
@@ -121,9 +130,7 @@ confirmed_trips <- conn$Stage_analysis_timeseries$find(query = '
     "metadata.key": "analysis/confirmed_trip"
   }
   ') %>% 
-  rowwise() %>%
-  mutate(user_id = paste0(unlist(user_id), collapse = "")) %>%
-  ungroup() %>%
+  mutate_uuid_to_string(user_id) %>%
   jsonlite::flatten()
 
 recreated_locations <- conn$Stage_analysis_timeseries$find(query = '
@@ -131,9 +138,7 @@ recreated_locations <- conn$Stage_analysis_timeseries$find(query = '
     "metadata.key": "analysis/recreated_location"
   }
   ') %>%
-  rowwise() %>%
-  mutate(user_id = paste0(unlist(user_id), collapse = "")) %>%
-  ungroup() %>%
+  mutate_uuid_to_string(user_id) %>%
   jsonlite::flatten()
 
 readr::write_csv(uuids, here::here("data", "uuids.csv"))
