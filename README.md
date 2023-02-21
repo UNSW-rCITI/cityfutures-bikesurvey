@@ -42,7 +42,7 @@ following command:
 
 ``` bash
 docker cp '<path/to/fourstep-mongdb-backup.tar.gz>' test-mongodb:/dump.tar.gz
-docker exec test-mongodb sh -c 'mongorestore --drop --archive --gzip dump.tar.gz'
+docker exec test-mongodb sh -c 'mongorestore --drop --gzip --archive=dump.tar.gz'
 ```
 
 The following R code can be used to extract the data from the database
