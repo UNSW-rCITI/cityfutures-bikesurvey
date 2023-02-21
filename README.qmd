@@ -142,6 +142,9 @@ readr::write_csv(confirmed_trips, here::here("data", "confirmed_trips.csv"))
 readr::write_csv(recreated_locations, here::here("data", "recreated_locations.csv"))
 ```
 
+The code chuck below shows how to match the confirmed trips with the recreated locations which are the GPS traces collected from users' devices.
+Matching them together allows us to get the XYZ trajectory for each confirmed trip along with the measured speed and sensed motion activity at each GPS point.
+
 ```{r}
 #| cache: true
 # set locations as data.table and duplicate location time to set an "interval"
@@ -171,7 +174,7 @@ joined_trips_and_locs <- data.table::foverlaps(
 
 # Data dictionary
 
-The sub-sections in this section provides information about each MongoDB collection of Fourstep.
+This section provides information about each MongoDB collection of Fourstep that we extracted in the previous section.
 
 ## `Stage_uuids`
 
