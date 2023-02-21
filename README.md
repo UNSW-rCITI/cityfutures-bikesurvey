@@ -194,9 +194,9 @@ tracking user activity or updating user information in a database.
 
 ## `Stage_profiles`
 
-The table appears to contain information about a user and their device,
-including app usage and device information. Here is a data dictionary
-describing the fields:
+The table contains information about a user and their device, including
+app usage and device information. Here is a data dictionary describing
+the fields:
 
 | Variable Name      | Data Type | Description                                                                                                               |
 |--------------------|-----------|---------------------------------------------------------------------------------------------------------------------------|
