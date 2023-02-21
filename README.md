@@ -22,12 +22,31 @@ Fourstep.
 To run this document you need:
 
 - Quarto 1.2 or newer.
-- MongoDB 4.4.0 and restore your Fourstep database backup.
+- [Docker](https://www.docker.com/products/docker-desktop/) or MongoDB
+  4.4.0 (tested).
 
 # Data extraction
 
 Fourstep uses NOSQL database to store its data and user data uploaded
-from their mobile phone devices.
+from their mobile phone devices. First you need to restore the database
+from the backup file to a running instance of MongoDB. If you have
+Docker installed, you can run the following command to start a MongoDB
+instance:
+
+``` bash
+docker run -d -p 27017:27017 --name test-mongodb mongo:4.4.0
+```
+
+Then you can restore the database from the backup file using the
+following command:
+
+``` bash
+docker cp '<path/to/fourstep-mongdb-backup.tar.gz>' test-mongodb:/dump.tar.gz
+docker exec test-mongodb sh -c 'mongorestore --drop --archive --gzip dump.tar.gz'
+```
+
+The following R code can be used to extract the data from the database
+and save it to CSV files.
 
 ``` r
 COLLECTIONS <-
