@@ -4,8 +4,9 @@ UNSW City Futures - Smartphone cyclist travel survey 2023
 - <a href="#requirements" id="toc-requirements">Requirements</a>
 - <a href="#data-extraction" id="toc-data-extraction">Data extraction</a>
 - <a href="#data-dictionary" id="toc-data-dictionary">Data dictionary</a>
-  - <a href="#stage_uuids" id="toc-stage_uuids">Stage_uuids</a>
-  - <a href="#stage_profiles" id="toc-stage_profiles">Stage_profiles</a>
+  - <a href="#stage_uuids" id="toc-stage_uuids"><code>Stage_uuids</code></a>
+  - <a href="#stage_profiles"
+    id="toc-stage_profiles"><code>Stage_profiles</code></a>
   - <a href="#stage_anaylsis_timeseries"
     id="toc-stage_anaylsis_timeseries"><code>Stage_anaylsis_timeseries</code></a>
     - <a href="#analysisrecreated_location"
@@ -126,8 +127,8 @@ readr::write_csv(recreated_locations, here::here("data", "recreated_locations.cs
 # set locations as data.table and duplicate location time to set an "interval"
 data.table::setDT(recreated_locations) %>%
   .[, data.fmt_time := lubridate::as_datetime(data.fmt_time)] %>%
-  .[, fmt_time_utc_end := (data.fmt_time)]
-data.table::setkey(recreated_locations, user_id, data.fmt_time, fmt_time_utc_end)
+  .[, data.fmt_time_dummy := (data.fmt_time)]
+data.table::setkey(recreated_locations, user_id, data.fmt_time, data.fmt_time_dummy)
 
 # join locations to trips according to time interval overlap (all done in UTC time for consistency)
 data.table::setDT(confirmed_trips)
@@ -137,22 +138,23 @@ confirmed_trips[, `:=`(
 )]
 data.table::setkey(confirmed_trips, user_id, data.start_fmt_time, data.end_fmt_time)
 
+# Here is an example of how you can merge the confirmed_trips table and the recreated locations table
+# together to get a table of locations (trip trajectories) that are associated with confirmed trips. 
 joined_trips_and_locs <- data.table::foverlaps(
-  recreated_locations, 
-  confirmed_trips, 
-  nomatch = "within"
-)
+  recreated_locations[, .(user_id, data.fmt_time, data.fmt_time_dummy, data.mode, data.idx)], 
+  confirmed_trips[, .(user_id, data.start_fmt_time, data.end_fmt_time)],
+  type = "any", 
+  nomatch = NULL
+) %>%
+.[, data.fmt_time_dummy := NULL]
 ```
-
-    Warning in data.table::foverlaps(recreated_locations, confirmed_trips, nomatch
-    = "within"): NAs introduced by coercion
 
 # Data dictionary
 
 The sub-sections in this section provides information about each MongoDB
 collection of Fourstep.
 
-## Stage_uuids
+## `Stage_uuids`
 
 This collection contains information about users, including their unique
 identifier (`user_id`), email address (`user_email`), and the timestamp
@@ -165,7 +167,7 @@ tracking user activity or updating user information in a database.
 | user_id    | string    | The unique identifier of the user.                         |
 | update_ts  | string    | The timestamp when the user was last logged in to the app. |
 
-## Stage_profiles
+## `Stage_profiles`
 
 The table appears to contain information about a user and their device,
 including app usage and device information. Here is a data dictionary
